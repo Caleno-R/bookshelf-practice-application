@@ -32,8 +32,7 @@ def create_app(test_config=None):
         )
         return response
 
- 
-    def paginate_books(request,selection):
+    def paginate_books(request, selection):
         page = request.args.get('page', 1, type=int)
         start = (page - 1) * BOOKS_PER_SHELF
         end = start + BOOKS_PER_SHELF
@@ -42,7 +41,7 @@ def create_app(test_config=None):
         current_books = books[start:end]
 
         return current_books
-    
+
     @app.route('/books')
     def retrieve_books():
         selection = Book.query.order_by('Book.id').all()
@@ -52,8 +51,8 @@ def create_app(test_config=None):
             abort(404)
 
         return jsonify({
-            'success':True,
-            'books':current_books,
+            'success': True,
+            'books': current_books,
             'total_books': len(Book.query.all())
         })
 
@@ -68,7 +67,7 @@ def create_app(test_config=None):
                 abort(404)
 
             if 'rating' in body:
-                book.rating=int(body.get('rating'))
+                book.rating = int(body.get('rating'))
 
             book.update()
 
@@ -87,7 +86,7 @@ def create_app(test_config=None):
 
             if book is None:
                 abort(404)
-            
+
             book.delete()
             selection = Book.query.order_by(Book.id).all()
             current_books = paginate_books(request, selection)
@@ -100,7 +99,7 @@ def create_app(test_config=None):
             })
         except:
             abort(422)
-    
+
     @app.route('/books/<int:book_id>', methods=['POST'])
     def create_book():
         body = request.get_json()
@@ -120,10 +119,38 @@ def create_app(test_config=None):
                 'success': True,
                 'created': book.id,
                 'books': current_books,
-                'total_books':len(Book.query.all()),
+                'total_books': len(Book.query.all()),
 
             })
         except:
             abort(422)
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 404,
+                    "message": "resource not found"}),
+            404,
+        )
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return (
+            jsonify({"success": False, "error": 422,
+                    "message": "unprocessable"}),
+            422,
+        )
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({"success": False, "error": 400, "message": "bad request"}), 400
+
+    @app.errorhandler(405)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 405,
+                    "message": "method not allowed"}),
+            405,
+        )
 
     return app
