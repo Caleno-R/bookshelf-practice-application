@@ -50,6 +50,7 @@ def create_app(test_config=None):
     #         Response body keys: 'success'
     # TEST: When completed, you will be able to click on stars to update a book's rating and it will persist after refresh
 
+
     # @TODO: Write a route that will delete a single book.
     #        Response body keys: 'success', 'deleted'(id of deleted book), 'books' and 'total_books'
     #        Response body keys: 'success', 'books' and 'total_books'
@@ -68,13 +69,35 @@ def create_app(test_config=None):
 
         if len(current_books) == 0:
             abort(404)
-            
+
         return jsonify({
             'success':True,
             'books':current_books,
             'total_books': len(Book.query.all())
         })
 
+    @app.route('/books/<int:book_id>', methods=['PATCH'])
+    def update_book(book_id):
+
+        body = request.get_json()
+
+        try:
+            book = Book.query.filter(Book.id == book_id).one_or_none()
+            if book is None:
+                abort(404)
+
+            if 'rating' in body:
+                book.rating=int(body.get('rating'))
+
+            book.update()
+
+            return jsonify({
+                'success': True,
+                'id': book.id
+            })
+
+        except:
+            abort(404)
 
 
     return app
