@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, abort, jsonify
-from flask_sqlalchemy import SQLAlchemy  # , or_
+from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 
@@ -8,11 +8,15 @@ from models import setup_db, Book
 
 BOOKS_PER_SHELF = 8
 
-# @TODO: General Instructions
-#   - As you're creating endpoints, define them and then search for 'TODO' within the frontend to update the endpoints there.
-#     If you do not update the endpoints, the lab will not work - of no fault of your API code!
-#   - Make sure for each route that you're thinking through when to abort and with which kind of error
-#   - If you change any of the response body keys, make sure you update the frontend to correspond.
+def paginate_books(request, selection):
+    page = request.args.get('page', 1, type=int)
+    start = (page - 1) * BOOKS_PER_SHELF
+    end = start + BOOKS_PER_SHELF
+
+    books = [book.format() for book in selection]
+    current_books = books[start:end]
+
+    return current_books
 
 
 def create_app(test_config=None):
@@ -31,16 +35,6 @@ def create_app(test_config=None):
             "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
         )
         return response
-
-    def paginate_books(request, selection):
-        page = request.args.get('page', 1, type=int)
-        start = (page - 1) * BOOKS_PER_SHELF
-        end = start + BOOKS_PER_SHELF
-
-        books = [book.format() for book in selection]
-        current_books = books[start:end]
-
-        return current_books
 
     @app.route('/books')
     def retrieve_books():
@@ -77,7 +71,7 @@ def create_app(test_config=None):
             })
 
         except:
-            abort(404)
+            abort(400)
 
     @app.route('/books/<int:book_id>', methods=['DELETE'])
     def delete_book(book_id):
@@ -107,21 +101,36 @@ def create_app(test_config=None):
         new_title = body.get('title', None)
         new_author = body.get('author', None)
         new_rating = body.get('rating', None)
+        search = body.get("search", None)
 
         try:
-            book = Book(title=new_title, author=new_author, rating=new_rating)
-            book.insert()
+            if search:
+                selection = Book.query.order_by(Book.id).filter(
+                    Book.title.ilike("%{}%".format(search))
+                )
+                current_books = paginate_books(request, selection)
 
-            selection = Book.query.order_by(Book.id).all()
-            current_books = paginate_books(request, selection)
+                return jsonify({
+                    'success': True,
+                    'books': current_books,
+                    'total_books': len(selection.all()),
 
-            return jsonify({
-                'success': True,
-                'created': book.id,
-                'books': current_books,
-                'total_books': len(Book.query.all()),
+                })
+            else:
+                book = Book(title=new_title, author=new_author, rating=new_rating)
+                book.insert()
 
-            })
+                selection = Book.query.order_by(Book.id).all()
+                current_books = paginate_books(request, selection)
+
+                return jsonify(
+                    {
+                        "success": True,
+                        "created": book.id,
+                        "books": current_books,
+                        "total_books": len(Book.query.all()),
+                    }
+                )
         except:
             abort(422)
 
