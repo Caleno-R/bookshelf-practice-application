@@ -43,20 +43,6 @@ def create_app(test_config=None):
 
         return current_books
 
-
-    # @TODO: Write a route that will update a single book's rating.
-    #         It should only be able to update the rating, not the entire representation
-    #         and should follow API design principles regarding method and route.
-    #         Response body keys: 'success'
-    # TEST: When completed, you will be able to click on stars to update a book's rating and it will persist after refresh
-
-
-    # @TODO: Write a route that will delete a single book.
-    #        Response body keys: 'success', 'deleted'(id of deleted book), 'books' and 'total_books'
-    #        Response body keys: 'success', 'books' and 'total_books'
-
-    # TEST: When completed, you will be able to delete a single book by clicking on the trashcan.
-
     # @TODO: Write a route that create a new book.
     #        Response body keys: 'success', 'created'(id of created book), 'books' and 'total_books'
     # TEST: When completed, you will be able to a new book using the form. Try doing so from the last page of books.
@@ -99,5 +85,25 @@ def create_app(test_config=None):
         except:
             abort(404)
 
+    @app.route('/books/<int:book_id>', methods=['DELETE'])
+    def delete_book(book_id):
+        try:
+            book = Book.query.filter(Book.id == book_id).one_or_none()
+
+            if book is None:
+                abort(404)
+            
+            book.delete()
+            selection = Book.query.order_by(Book.id).all()
+            current_books = paginate_books(request, selection)
+
+            return jsonify({
+                'succeed': True,
+                'deleted': book_id,
+                'books': current_books,
+                'total_books': len(Book.query.all()),
+            })
+        except:
+            abort(422)
 
     return app
